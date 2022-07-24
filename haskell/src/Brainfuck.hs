@@ -1,5 +1,5 @@
 module Brainfuck (
-    BF(..),
+    BF(..), opToAction,
     next, prev,
     incr, decr,
     lbeg, lend,
@@ -8,6 +8,7 @@ module Brainfuck (
 
 import Data.Char (chr, ord)
 import Data.Default
+import Data.Map (Map, fromList, (!))
 import System.IO (isEOF)
 
 data BF = BF { program :: String
@@ -19,6 +20,21 @@ data BF = BF { program :: String
 
 instance Default BF where
   def = BF "" 0 [] 0 [0]
+
+opToActionM :: Map Char (BF -> IO BF)
+opToActionM = fromList
+  [ ('>', return . next)
+  , ('<', return . prev)
+  , ('+', return . incr)
+  , ('-', return . decr)
+  , ('[', return . lbeg)
+  , (']', return . lend)
+  , ('.', cget)
+  , (',', cput)
+  ]
+
+opToAction :: Char -> BF -> IO BF
+opToAction = (opToActionM !)
 
 next :: BF -> BF
 next m = m { cellptr = 1 + cellptr m, cells = adjusted, progctr = 1 + progctr m }
