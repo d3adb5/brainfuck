@@ -33,3 +33,15 @@ spec = do
       let initial = BF "" 0 [] 0 $ replicate 10 0
           desired = BF "" 1 [] 0 $ replicate 11 0
       prev initial `shouldBe` desired
+
+  describe "incr :: BF -> BF" $ do
+    it "increments the value of the current cell" $ do
+      let initial = BF "" 0 [] 2 [0, 0, 0]
+          desired = BF "" 1 [] 2 [0, 0, 1]
+      incr initial `shouldBe` desired
+
+  describe "decr :: BF -> BF" $ do
+    it "decrements the value of the current cell" $ do
+      let initial = BF "" 0 [] 2 [0, 0, 10]
+          desired = BF "" 1 [] 2 [0, 0,  9]
+      decr initial `shouldBe` desired

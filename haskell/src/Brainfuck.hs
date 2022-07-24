@@ -1,4 +1,8 @@
-module Brainfuck where
+module Brainfuck (
+    BF(..),
+    next, prev,
+    incr, decr
+  ) where
 
 import Data.Default
 
@@ -21,3 +25,16 @@ prev :: BF -> BF
 prev m = m { cellptr = newptr, cells = adjusted, progctr = 1 + progctr m }
   where adjusted = if cellptr m == 0 then 0 : cells m else cells m
         newptr = max 0 (cellptr m - 1)
+
+incr :: BF -> BF
+incr m = m { cells = modified, progctr = 1 + progctr m }
+  where modified = modifyAt (cellptr m) (+ 1) (cells m)
+
+decr :: BF -> BF
+decr m = m { cells = modified, progctr = 1 + progctr m }
+  where modified = modifyAt (cellptr m) (flip (-) 1) (cells m)
+
+modifyAt :: Int -> (a -> a) -> [a] -> [a]
+modifyAt _ _ [] = []
+modifyAt 0 f (x:xs) = f x : xs
+modifyAt n f (x:xs) = x : modifyAt (n - 1) f xs
