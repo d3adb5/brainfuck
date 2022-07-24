@@ -77,6 +77,12 @@ spec = do
       (machine,_) <- liftIO $ fakeIO (cput initial) "A"
       machine `shouldBe` desired
 
+    it "reads null character into cell when hitting EOF" $ do
+      let initial = BF "" 0 [] 1 [0, 65, 0]
+          desired = BF "" 1 [] 1 [0,  0, 0]
+      (machine,_) <- liftIO $ fakeIO (cput initial) ""
+      machine `shouldBe` desired
+
   describe "cget :: BF -> IO BF" $ do
     it "puts character from cell into stdout" $ do
       let initial = BF "" 0 [] 1 [0, 65, 0]
