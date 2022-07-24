@@ -9,9 +9,39 @@ jobs:
   build-c:
     name: Build (C)
     runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: c
+
     steps:
       - name: Checkout files in the repository
         uses: actions/checkout@v3
 
       - name: Builds C implementation
-        run: cd c && make
+        run: make
+
+  build-hs:
+    name: Build (Haskell)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: haskell
+
+    steps:
+      - name: Checkout files in the repository
+        uses: actions/checkout@v3
+
+      - name: Setup Haskell & Stack
+        uses: haskell/actions/setup@v2
+        with:
+          enable-stack: true
+          stack-version: latest
+          stack-no-global: true
+
+      - name: Build Haskell implementation
+        run: stack build
+
+      - name: Run unit tests
+        run: stack test
