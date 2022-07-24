@@ -1,0 +1,17 @@
+name: CI
+
+on:
+  pull_request: {}
+  push:
+    branches: [ master ]
+
+jobs:
+  build-c:
+    name: Build (C)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout files in the repository
+        uses: actions/checkout@v3
+
+      - name: Builds C implementation
+        run: cd c && make
