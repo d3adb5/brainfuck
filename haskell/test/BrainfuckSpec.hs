@@ -54,9 +54,9 @@ spec = do
           desired = BF "" 1 [1] 0 [1, 0, 0]
       lbeg initial `shouldBe` desired
 
-    it "pushes -1 to the loop stack if current cell is zero" $ do
-      let initial = BF "" 0 [  ] 0 [0, 0, 0]
-          desired = BF "" 1 [-1] 0 [0, 0, 0]
+    it "skips to loop close if current cell is zero" $ do
+      let initial = BF "+>[+[--]+]<-"  2 [] 0 [0, 0, 0]
+          desired = BF "+>[+[--]+]<-" 10 [] 0 [0, 0, 0]
       lbeg initial `shouldBe` desired
 
   describe "lend :: BF -> BF" $ do
@@ -69,14 +69,6 @@ spec = do
       let initial = BF "" 100 [50, 20] 1 [0, 0, 0]
           desired = BF "" 101 [20]     1 [0, 0, 0]
       lend initial `shouldBe` desired
-
-    it "pops -1 from loop stack and continues regardless of current cell value" $ do
-      let initialN = BF "" 100 [-1, 20] 1 [0, 1, 0]
-          desiredN = BF "" 101 [20]     1 [0, 1, 0]
-          initialZ = BF "" 123 [-1, 25] 1 [0, 0, 0]
-          desiredZ = BF "" 124 [25]     1 [0, 0, 0]
-      lend initialN `shouldBe` desiredN
-      lend initialZ `shouldBe` desiredZ
 
   describe "cput :: BF -> IO BF" $ do
     it "reads character from stdin into cell" $ do
