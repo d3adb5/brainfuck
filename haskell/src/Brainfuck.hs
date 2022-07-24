@@ -1,7 +1,8 @@
 module Brainfuck (
     BF(..),
     next, prev,
-    incr, decr
+    incr, decr,
+    lbeg, lend
   ) where
 
 import Data.Default
@@ -33,6 +34,19 @@ incr m = m { cells = modified, progctr = 1 + progctr m }
 decr :: BF -> BF
 decr m = m { cells = modified, progctr = 1 + progctr m }
   where modified = modifyAt (cellptr m) (flip (-) 1) (cells m)
+
+lbeg :: BF -> BF
+lbeg m = m { loopind = newstack, progctr = 1 + progctr m }
+  where newstack | cells m !! cellptr m /= 0 = 1 + progctr m : loopind m
+                 | otherwise = -1 : loopind m
+
+lend :: BF -> BF
+lend m = m { loopind = newstack, progctr = newprogctr }
+  where shouldLoop = head (loopind m) /= -1 && cells m !! cellptr m /= 0
+        newstack | shouldLoop = loopind m
+                 | otherwise = tail $ loopind m
+        newprogctr | shouldLoop = head $ loopind m
+                   | otherwise = 1 + progctr m
 
 modifyAt :: Int -> (a -> a) -> [a] -> [a]
 modifyAt _ _ [] = []
