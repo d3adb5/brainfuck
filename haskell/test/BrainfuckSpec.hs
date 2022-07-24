@@ -2,7 +2,9 @@ module BrainfuckSpec (spec) where
 
 import Test.Hspec
 
+import Control.Monad.IO.Class (liftIO)
 import Data.Default (Default(..))
+import System.IO.Fake (fakeIO)
 
 import Brainfuck
 
@@ -75,3 +77,18 @@ spec = do
           desiredZ = BF "" 124 [25]     1 [0, 0, 0]
       lend initialN `shouldBe` desiredN
       lend initialZ `shouldBe` desiredZ
+
+  describe "cput :: BF -> IO BF" $ do
+    it "reads character from stdin into cell" $ do
+      let initial = BF "" 0 [] 1 [0,  0, 0]
+          desired = BF "" 1 [] 1 [0, 65, 0]
+      (machine,_) <- liftIO $ fakeIO (cput initial) "A"
+      machine `shouldBe` desired
+
+  describe "cget :: BF -> IO BF" $ do
+    it "puts character from cell into stdout" $ do
+      let initial = BF "" 0 [] 1 [0, 65, 0]
+          desired = BF "" 1 [] 1 [0, 65, 0]
+      (machine, output) <- liftIO $ fakeIO (cget initial) ""
+      machine `shouldBe` desired
+      output `shouldBe` "A"

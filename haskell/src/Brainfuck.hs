@@ -2,9 +2,11 @@ module Brainfuck (
     BF(..),
     next, prev,
     incr, decr,
-    lbeg, lend
+    lbeg, lend,
+    cput, cget
   ) where
 
+import Data.Char (chr, ord)
 import Data.Default
 
 data BF = BF { program :: String
@@ -47,6 +49,16 @@ lend m = m { loopind = newstack, progctr = newprogctr }
                  | otherwise = tail $ loopind m
         newprogctr | shouldLoop = head $ loopind m
                    | otherwise = 1 + progctr m
+
+cput :: BF -> IO BF
+cput m = do
+  modifier <- modifyAt (cellptr m) . const . ord <$> getChar
+  return $ m { cells = modifier $ cells m, progctr = 1 +progctr m }
+
+cget :: BF -> IO BF
+cget m = do
+  putChar . chr $ cells m !! cellptr m
+  return $ m { progctr = 1 + progctr m }
 
 modifyAt :: Int -> (a -> a) -> [a] -> [a]
 modifyAt _ _ [] = []
