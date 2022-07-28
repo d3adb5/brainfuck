@@ -34,7 +34,7 @@ executable brainfuck
 
 test-suite brainfuck-test
   default-language: Haskell2010
-  ghc-options: -Wall -threaded -j
+  ghc-options: -Wall -Wno-orphans -threaded -j
   hs-source-dirs: test
 
   main-is: Spec.hs
@@ -43,6 +43,9 @@ test-suite brainfuck-test
   build-depends:
       base >=4.7 && <5
     , hspec == 2.8.5
+    , QuickCheck == 2.14.2
+    , checkers == 0.6.0
+    , ilist == 0.4.0.1
     , data-default == 0.7.1.1
     , deepseq == 1.4.5.0
     , directory == 1.3.6.2

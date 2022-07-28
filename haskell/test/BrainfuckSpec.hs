@@ -1,12 +1,54 @@
+{-# LANGUAGE TupleSections #-}
+
 module BrainfuckSpec (spec) where
 
 import Test.Hspec
+import Test.Hspec.QuickCheck
+import Test.QuickCheck hiding (output)
+import Test.QuickCheck.Instances.Tuple ((>*<), (>**<))
 
 import Control.Monad.IO.Class (liftIO)
+import Data.Char (chr)
 import Data.Default (Default(..))
+import Data.List (sort)
+import Data.List.Index (setAt)
+import Data.Word (Word8)
 import System.IO.Fake (fakeIO)
 
 import Brainfuck
+
+instance Arbitrary BF where
+  arbitrary = do
+    let progGen n = arbitraryBFProgram (n + 1)
+        lstkGen n = chooseInt (0, div n 2) >>= \ln -> sort <$> vectorOf ln (chooseInt (0, n))
+        cellGen n = vectorOf (n + 1) arbitrary
+        ctrGen n = chooseInt (0, n)
+    (prog, pctr, lstk) <- sized $ \pn -> (>**<) (progGen pn) (ctrGen pn) (lstkGen pn)
+    (clls, cctr) <- sized $ \cn -> cellGen cn >*< ctrGen cn
+    pure $ BF prog pctr lstk cctr clls
+
+arbitraryBFProgram :: Int -> Gen String
+arbitraryBFProgram n = normalize <$> vectorOf n (elements "+-[]<>,.")
+  where normalize p = let (c,o) = loopWrappers 0 0 p in
+          replicate c '[' ++ p ++ replicate o ']'
+
+loopWrappers :: Int -> Int -> String -> (Int, Int)
+loopWrappers c o [] = (c, o)
+loopWrappers c 0 (']':p) = loopWrappers (c + 1) 0 p
+loopWrappers c o (']':p) = loopWrappers c (o - 1) p
+loopWrappers c o ('[':p) = loopWrappers c (o + 1) p
+loopWrappers c o ( _ :p) = loopWrappers c o p
+
+findLoopEnd :: String -> Int
+findLoopEnd "" = 0
+findLoopEnd (']':_) = 1
+findLoopEnd ('[':cs) =
+  let newEnd = findLoopEnd cs
+  in 1 + newEnd + findLoopEnd (drop newEnd cs)
+findLoopEnd (_:cs) = 1 + findLoopEnd cs
+
+currentCell :: BF -> Word8
+currentCell m = cells m !! cellptr m
 
 spec :: Spec
 spec = do
@@ -15,78 +57,76 @@ spec = do
       shouldBe def $ BF "" 0 [] 0 [0]
 
   describe "next :: BF -> BF" $ do
-    it "points to the next cell in an ideal situation" $ do
-      let initial = BF "" 0 [] 0 [0, 0, 0]
-          desired = BF "" 1 [] 1 [0, 0, 0]
-      next initial `shouldBe` desired
+    prop "moves the pointer to the next cell" $ \bf ->
+      cellptr (next bf) `shouldBe` 1 + cellptr bf
 
-    it "increases the number of available cells when at the end" $ do
-      let initial = BF "" 0 []  9 $ replicate 10 0
-          desired = BF "" 1 [] 10 $ replicate 11 0
-      next initial `shouldBe` desired
+    prop "increases the number of available cells when at the end" $ \bf -> do
+      let numberOfCells = length $ cells bf
+          pointerAtEnd = bf { cellptr = numberOfCells - 1 }
+          pointerMoved = next pointerAtEnd
+      length (cells pointerMoved) `shouldBe` 1 + numberOfCells
 
   describe "prev :: BF -> BF" $ do
-    it "points to the previous cell in an ideal situation" $ do
-      let initial = BF "" 0 [] 2 [0, 0, 0]
-          desired = BF "" 1 [] 1 [0, 0, 0]
-      prev initial `shouldBe` desired
+    prop "moves the pointer to the previous cell" $ \bf ->
+      cellptr (prev bf) `shouldBe` max 0 (cellptr bf - 1)
 
-    it "increases the number of available cells when at the start" $ do
-      let initial = BF "" 0 [] 0 $ replicate 10 0
-          desired = BF "" 1 [] 0 $ replicate 11 0
-      prev initial `shouldBe` desired
+    prop "increases the number of available cells when at the start" $ \bf -> do
+      let pointerAtStart = bf { cellptr = 0 }
+          numberOfCells = length $ cells bf
+          pointerMoved = prev pointerAtStart
+      length (cells pointerMoved) `shouldBe` 1 + numberOfCells
 
   describe "incr :: BF -> BF" $ do
-    it "increments the value of the current cell" $ do
-      let initial = BF "" 0 [] 2 [0, 0, 0]
-          desired = BF "" 1 [] 2 [0, 0, 1]
-      incr initial `shouldBe` desired
+    prop "increments the value of the current cell" $ \bf ->
+      currentCell (incr bf) `shouldBe` 1 + currentCell bf
 
   describe "decr :: BF -> BF" $ do
-    it "decrements the value of the current cell" $ do
-      let initial = BF "" 0 [] 2 [0, 0, 10]
-          desired = BF "" 1 [] 2 [0, 0,  9]
-      decr initial `shouldBe` desired
+    prop "decrements the value of the current cell" $ \bf ->
+      currentCell (decr bf) `shouldBe` currentCell bf - 1
 
   describe "lbeg :: BF -> BF" $ do
-    it "pushes next index to loop stack if current cell is non-zero" $ do
-      let initial = BF "" 0 [ ] 0 [1, 0, 0]
-          desired = BF "" 1 [1] 0 [1, 0, 0]
-      lbeg initial `shouldBe` desired
+    prop "pushes next index to loop stack if current cell is non-zero" $ \bf -> do
+      let nonzero | currentCell bf == 0 = (incr bf) { progctr = progctr bf }
+                  | otherwise = bf
+      head (loopind $ lbeg nonzero) `shouldBe` 1 + progctr bf
 
-    it "skips to loop close if current cell is zero" $ do
-      let initial = BF "+>[+[--]+]<-"  2 [] 0 [0, 0, 0]
-          desired = BF "+>[+[--]+]<-" 10 [] 0 [0, 0, 0]
-      lbeg initial `shouldBe` desired
+    prop "skips to loop close if current cell is zero" $ \bf -> do
+      let closedp = program bf ++ "]"
+          zeroedc = setAt (cellptr bf) 0 (cells bf)
+          machine = bf { program = closedp, cells = zeroedc }
+          lclosei = 1 + progctr machine + findLoopEnd premain
+          premain = drop (1 + progctr machine) $ program machine
+          lbegged = lbeg machine
+      progctr lbegged `shouldBe` lclosei
+      program lbegged !! (progctr lbegged - 1) `shouldBe` ']'
 
   describe "lend :: BF -> BF" $ do
-    it "applies index from loop stack if current cell is non-zero" $ do
-      let initial = BF "" 100 [50, 20] 1 [0, 1, 0]
-          desired = BF ""  50 [50, 20] 1 [0, 1, 0]
-      lend initial `shouldBe` desired
+    prop "applies index from loop stack if current cell is non-zero" $ \bf -> do
+      let nestack = nonzero { loopind = loopind bf ++ [0] }
+          nonzero | currentCell bf == 0 = (incr bf) { progctr = progctr bf }
+                  | otherwise = bf
+          lended = lend nestack
+      progctr lended `shouldBe` head (loopind nestack)
+      loopind lended `shouldBe` loopind nestack
 
-    it "pops index from loop stack if current cell is zero" $ do
-      let initial = BF "" 100 [50, 20] 1 [0, 0, 0]
-          desired = BF "" 101 [20]     1 [0, 0, 0]
-      lend initial `shouldBe` desired
+    prop "pops index from loop stack if current cell is zero" $ \bf -> do
+      let zeroedm = bf { cells = setAt (cellptr bf) 0 (cells bf) }
+          nestack = zeroedm { loopind = loopind bf ++ [0] }
+          lended = lend nestack
+      progctr lended `shouldBe` 1 + progctr bf
+      loopind lended `shouldBe` tail (loopind nestack)
 
   describe "cput :: BF -> IO BF" $ do
-    it "reads character from stdin into cell" $ do
-      let initial = BF "" 0 [] 1 [0,  0, 0]
-          desired = BF "" 1 [] 1 [0, 65, 0]
-      (machine,_) <- liftIO $ fakeIO (cput initial) "A"
-      machine `shouldBe` desired
+    prop "reads character from stdin into cell" $ \bf -> do
+      (machine, _) <- liftIO $ fakeIO (cput bf) "A"
+      currentCell machine `shouldBe` 65
 
-    it "reads null character into cell when hitting EOF" $ do
-      let initial = BF "" 0 [] 1 [0, 65, 0]
-          desired = BF "" 1 [] 1 [0,  0, 0]
-      (machine,_) <- liftIO $ fakeIO (cput initial) ""
-      machine `shouldBe` desired
+    prop "reads null character into cell when hitting EOF" $ \bf -> do
+      (machine, _) <- liftIO $ fakeIO (cput bf) ""
+      currentCell machine `shouldBe` 0
 
   describe "cget :: BF -> IO BF" $ do
-    it "puts character from cell into stdout" $ do
-      let initial = BF "" 0 [] 1 [0, 65, 0]
-          desired = BF "" 1 [] 1 [0, 65, 0]
-      (machine, output) <- liftIO $ fakeIO (cget initial) ""
-      machine `shouldBe` desired
-      output `shouldBe` "A"
+    prop "puts character from cell into stdout" $ \bf -> do
+      (machine, output) <- liftIO $ fakeIO (cget bf) ""
+      progctr machine `shouldBe` 1 + progctr bf
+      head output `shouldBe` chr (fromEnum $ currentCell bf)
