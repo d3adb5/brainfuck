@@ -10,13 +10,14 @@ import Data.Char (chr, ord)
 import Data.Default
 import Data.List.Index (modifyAt)
 import Data.Map (Map, fromList, (!))
+import Data.Word (Word8)
 import System.IO (isEOF)
 
 data BF = BF { program :: String
              , progctr :: Int
              , loopind :: [Int]
              , cellptr :: Int
-             , cells :: [Int]
+             , cells :: [Word8]
              } deriving (Show, Eq)
 
 instance Default BF where
@@ -74,13 +75,13 @@ lend m = m { loopind = newstack, progctr = newprogctr }
 
 cput :: BF -> IO BF
 cput m = do
-  modifier <- modifyAt (cellptr m) . const . ord <$> tryToGetChar
+  modifier <- modifyAt (cellptr m) . const . toEnum . ord <$> tryToGetChar
   return $ m { cells = modifier $ cells m, progctr = 1 +progctr m }
   where tryToGetChar = isEOF >>= \e -> if e then return '\0' else getChar
 
 cget :: BF -> IO BF
 cget m = do
-  putChar . chr $ cells m !! cellptr m
+  putChar . chr . fromEnum $ cells m !! cellptr m
   return $ m { progctr = 1 + progctr m }
 
 findLoopEnd :: String -> Int
