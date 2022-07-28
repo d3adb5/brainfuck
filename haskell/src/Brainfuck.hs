@@ -8,6 +8,7 @@ module Brainfuck (
 
 import Data.Char (chr, ord)
 import Data.Default
+import Data.List.Index (modifyAt)
 import Data.Map (Map, fromList, (!))
 import System.IO (isEOF)
 
@@ -81,11 +82,6 @@ cget :: BF -> IO BF
 cget m = do
   putChar . chr $ cells m !! cellptr m
   return $ m { progctr = 1 + progctr m }
-
-modifyAt :: Int -> (a -> a) -> [a] -> [a]
-modifyAt _ _ [] = []
-modifyAt 0 f (x:xs) = f x : xs
-modifyAt n f (x:xs) = x : modifyAt (n - 1) f xs
 
 findLoopEnd :: String -> Int
 findLoopEnd "" = 0
