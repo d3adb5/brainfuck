@@ -12,7 +12,13 @@ library
   ghc-options: -Wall -threaded -j
   hs-source-dirs: src
 
-  exposed-modules: Brainfuck
+  exposed-modules:
+    Brainfuck
+    Brainfuck.Util
+
+  other-modules:
+    Brainfuck.Core
+    Brainfuck.Operators
 
   build-depends:
       base >=4.7 && <5
