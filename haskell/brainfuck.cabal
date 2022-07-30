@@ -61,3 +61,4 @@ test-suite brainfuck-test
       System.IO.Fake
       Test.Brainfuck
       BrainfuckSpec
+      Brainfuck.UtilSpec

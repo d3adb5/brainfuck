@@ -3,6 +3,7 @@ module Test.Brainfuck where
 import Test.QuickCheck
 import Test.QuickCheck.Instances.Tuple ((>*<), (>**<))
 
+import Data.Char (chr, ord)
 import Data.List (sort)
 
 import Brainfuck
@@ -40,3 +41,6 @@ missingBrackets' to tc op cl (ch:p)
   | ch == cl  = missingBrackets' to (tc - 1) op cl p
   | ch == op  = missingBrackets' to (tc + 1) op cl p
   | otherwise = missingBrackets' to tc       op cl p
+
+nextChar :: Char -> Char
+nextChar = chr . (+ 1) . ord
