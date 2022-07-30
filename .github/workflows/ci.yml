@@ -7,7 +7,7 @@ on:
 
 jobs:
   build-c:
-    name: Build (C)
+    name: C
     runs-on: ubuntu-latest
 
     defaults:
@@ -22,7 +22,7 @@ jobs:
         run: make
 
   build-hs:
-    name: Build (Haskell)
+    name: Haskell
     runs-on: ubuntu-latest
 
     defaults:
@@ -32,6 +32,8 @@ jobs:
     steps:
       - name: Checkout files in the repository
         uses: actions/checkout@v3
+        with:
+          submodules: recursive
 
       - name: Setup Haskell & Stack
         uses: haskell/actions/setup@v2
@@ -45,3 +47,7 @@ jobs:
 
       - name: Run unit tests
         run: stack test
+
+      - name: Run example (e2e?) tests
+        run: ./test/bats/bin/bats ./test/haskell.bats
+        working-directory: .
