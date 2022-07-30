@@ -59,4 +59,5 @@ test-suite brainfuck-test
 
   other-modules:
       System.IO.Fake
+      Test.Brainfuck
       BrainfuckSpec

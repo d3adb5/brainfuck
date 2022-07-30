@@ -1,54 +1,17 @@
-{-# LANGUAGE TupleSections #-}
-
 module BrainfuckSpec (spec) where
 
 import Test.Hspec
 import Test.Hspec.QuickCheck
-import Test.QuickCheck hiding (output)
-import Test.QuickCheck.Instances.Tuple ((>*<), (>**<))
+import Test.Brainfuck ()
 
 import Control.Monad.IO.Class (liftIO)
 import Data.Char (chr)
 import Data.Default (Default(..))
-import Data.List (sort)
 import Data.List.Index (setAt)
-import Data.Word (Word8)
 import System.IO.Fake (fakeIO)
 
+import Brainfuck.Util (currentCell, findBFLoopEnd)
 import Brainfuck
-
-instance Arbitrary BF where
-  arbitrary = do
-    let progGen n = arbitraryBFProgram (n + 1)
-        lstkGen n = chooseInt (0, div n 2) >>= \ln -> sort <$> vectorOf ln (chooseInt (0, n))
-        cellGen n = vectorOf (n + 1) arbitrary
-        ctrGen n = chooseInt (0, n)
-    (prog, pctr, lstk) <- sized $ \pn -> (>**<) (progGen pn) (ctrGen pn) (lstkGen pn)
-    (clls, cctr) <- sized $ \cn -> cellGen cn >*< ctrGen cn
-    pure $ BF prog pctr lstk cctr clls
-
-arbitraryBFProgram :: Int -> Gen String
-arbitraryBFProgram n = normalize <$> vectorOf n (elements "+-[]<>,.")
-  where normalize p = let (c,o) = loopWrappers 0 0 p in
-          replicate c '[' ++ p ++ replicate o ']'
-
-loopWrappers :: Int -> Int -> String -> (Int, Int)
-loopWrappers c o [] = (c, o)
-loopWrappers c 0 (']':p) = loopWrappers (c + 1) 0 p
-loopWrappers c o (']':p) = loopWrappers c (o - 1) p
-loopWrappers c o ('[':p) = loopWrappers c (o + 1) p
-loopWrappers c o ( _ :p) = loopWrappers c o p
-
-findLoopEnd :: String -> Int
-findLoopEnd "" = 0
-findLoopEnd (']':_) = 1
-findLoopEnd ('[':cs) =
-  let newEnd = findLoopEnd cs
-  in 1 + newEnd + findLoopEnd (drop newEnd cs)
-findLoopEnd (_:cs) = 1 + findLoopEnd cs
-
-currentCell :: BF -> Word8
-currentCell m = cells m !! cellptr m
 
 spec :: Spec
 spec = do
@@ -94,7 +57,7 @@ spec = do
       let closedp = program bf ++ "]"
           zeroedc = setAt (cellptr bf) 0 (cells bf)
           machine = bf { program = closedp, cells = zeroedc }
-          lclosei = 1 + progctr machine + findLoopEnd premain
+          lclosei = 2 + progctr machine + findBFLoopEnd premain
           premain = drop (1 + progctr machine) $ program machine
           lbegged = lbeg machine
       progctr lbegged `shouldBe` lclosei
