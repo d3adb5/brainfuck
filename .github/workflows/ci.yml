@@ -61,6 +61,17 @@ jobs:
       - name: Build, test and generate coverage report
         run: stack test --coverage
 
+      - name: Generate codecov report
+        working-directory: .
+        run: |
+          stack install hpc-codecov
+          hpc-codecov -r haskell stack:brainfuck-test -o haskell/codecov.json
+
+      - name: Upload coverage report to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: haskell/codecov.json
+
       - name: Run example (e2e?) tests
         run: ./test/bats/bin/bats ./test/haskell.bats
         working-directory: .
