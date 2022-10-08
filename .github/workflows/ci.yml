@@ -58,11 +58,8 @@ jobs:
           restore-keys: |
             stack-work-
 
-      - name: Build Haskell implementation
-        run: stack build
-
-      - name: Run unit tests
-        run: stack test
+      - name: Build, test and generate coverage report
+        run: stack test --coverage
 
       - name: Run example (e2e?) tests
         run: ./test/bats/bin/bats ./test/haskell.bats

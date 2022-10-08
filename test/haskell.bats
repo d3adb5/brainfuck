@@ -5,6 +5,9 @@ setup() {
   load 'helper/bats-assert/load'
 
   cd "$BATS_TEST_DIRNAME/../haskell"
+
+  # Ensure proper binaries have been compiled.
+  stack build
 }
 
 @test "hello world program" {
